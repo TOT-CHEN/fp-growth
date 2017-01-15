@@ -23,6 +23,8 @@ def find_frequent_itemsets(transactions, minimum_support, include_support=False)
     for transaction in imap(clean_transaction, transactions):
         master.add(transaction)
 
+    # master.inspect()
+
     def find_with_suffix(tree, suffix):
         for item, nodes in tree.items():
             support = sum(n.count for n in nodes)
@@ -64,17 +66,17 @@ class FPTree(object):
         try:
             route = self._routes[point.item]
             route.tail.neighbor = point
-            self._routes[point.item] = self.Route(route[0], point)
+            self._routes[point.item] = self.Route(route.head, point)
         except KeyError:
             self._routes[point.item] = self.Route(point, point)
 
     def items(self):
-        for item in self._routes.iterkeys():
+        for item in sorted(self._routes.iterkeys()):
             yield (item, self.nodes(item))
 
     def nodes(self, item):
         try:
-            node = self._routes[item][0]
+            node = self._routes[item].head
         except KeyError:
             return
         while node:
@@ -213,7 +215,7 @@ class FPNode(object):
 
     def inspect(self, depth=0):
         print ('  ' * depth) + repr(self)
-        for child in self.children:
+        for child in sorted(self.children):
             child.inspect(depth + 1)
 
     def __repr__(self):
@@ -225,13 +227,16 @@ if __name__ == '__main__':
     from optparse import OptionParser
     import csv
 
-    p = OptionParser(usage='%prog data_file')
+    p = OptionParser(usage='%prog [options] data_file')
     p.add_option('-s', '--minimum-support', dest='minsup', type='int',
         help='Minimum itemset support (default: 2)')
     p.add_option('-n', '--numeric', dest='numeric', action='store_true',
         help='Convert the values in datasets to numerals (default: false)')
+    p.add_option('-o', '--output', dest='output',
+        help='Specifies the output file. The default is stdout.')
     p.set_defaults(minsup=2)
     p.set_defaults(numeric=False)
+    p.set_defaults(output='-')
 
     options, args = p.parse_args()
     if len(args) < 1:
@@ -253,5 +258,10 @@ if __name__ == '__main__':
         result.append((itemset,support))
 
     result = sorted(result, key=lambda i: i[0])
-    for itemset, support in result:
-        print str(itemset) + ' ' + str(support)
+    if options.output and options.output != '-':
+        with open(options.output, 'w') as output_file:
+            for itemset, support in result:
+                output_file.write(str(itemset) + ' ' + str(support) + '\n')
+    else:
+        for itemset, support in result:
+            print str(itemset) + ' ' + str(support)
